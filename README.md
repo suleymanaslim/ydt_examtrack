@@ -1,12 +1,23 @@
-# YDT Takip — Kurulum ve Kullanım Kılavuzu
+# YDT Takip Sistemi
 
-## Gereksinimler
+YDT (Yabancı Dil Testi) öğretmenleri ve öğrencileri için geliştirilmiş, yerel öncelikli (local-first) ve basit bir sınav takip sistemidir.
 
-- **Node.js** (v18+)
+## Özellikler
 
-> Uygulama tamamen frontend'de çalışır.
+- **Öğrenci Paneli**: Öğrencilerin kolayca sınav sonuçlarını girebileceği adım adım sihirbaz arayüzü.
+- **JSON Transferi**: Veritabanı kurulumu gerektirmeyen, öğrencinin ürettiği JSON kodunu öğretmene (WhatsApp vb. üzerinden) göndermesiyle çalışan basit veri aktarımı.
+- **Öğretmen Paneli**: Gelen JSON verilerini içe aktararak öğrenci gelişimini takip etme.
+- **Görsel İstatistikler**: Konu bazlı başarı oranları, net gelişim grafiği (özel SVG çizim) ve dikkat edilmesi gereken konular.
+- **Modern Tasarım**: Tailwind CSS ve Framer Motion ile güçlendirilmiş, karanlık tema destekli premium kullanıcı deneyimi.
 
----
+## Teknolojiler
+
+- React 19
+- Vite
+- Tailwind CSS
+- Framer Motion
+- Lucide React (İkonlar)
+- Dexie.js (Yerel veritabanı - IndexedDB)
 
 ## Kurulum
 
@@ -16,28 +27,4 @@ npm install
 npm run dev
 ```
 
-Uygulama `http://localhost:5173` adresinde açılır.
-
----
-
-## Kullanım
-
-### Öğrenci — Şifresiz
-1. Ana sayfada "(Öğrenci)" butonuna tıklayın
-2. Sınav tarihini seçin, her konu için doğru/yanlış sayısını girin
-3. "Sonucu Göster" butonuna tıklayın
-4. Ekrandaki **sonuç kartı**nın ekran görüntüsünü alabilir veya **JSON Kopyala** butonuyla veriyi kopyalayıp öğretmene gönderebilirsiniz
-
-### Öğretmen (Süleyman) — Şifre: `ogretmen123`
-1. "Süleyman (Öğretmen)" butonuna tıklayın, şifre girin
-2. "Sınav Ekle" → öğrenciden gelen JSON'ı yapıştırın → "Ekle"
-3. Tüm sınavlar listede görünür, detay açılabilir, silinebilir
-4. **Gelişim** sekmesi: istatistik kartları + net puan grafiği
-
-> Veriler tarayıcının localStorage'ında saklanır. Tarayıcı verilerini temizlerseniz silinir.
-
----
-
-## Şifre Değiştirme
-
-`frontend/.env` dosyasındaki `VITE_TEACHER_PASSWORD` değerini değiştirin.
+Bu sistem, herhangi bir cloud veritabanı kurulumu gerektirmeden, verileri kullanıcının kendi tarayıcısında (IndexedDB) güvenli ve hızlı bir şekilde saklar.

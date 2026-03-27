@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileEdit, Copy, Check, RotateCcw, ClipboardList } from 'lucide-react';
+import { FileEdit, Copy, Check, RotateCcw, ClipboardList, ChevronRight, ChevronLeft } from 'lucide-react';
 import { TOPICS } from '../constants/topics';
 
 const initialResults = () =>
@@ -19,6 +19,7 @@ export default function StudentDashboard() {
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
 
   const handleChange = (topicKey, field, value) => {
     const topic = TOPICS.find((t) => t.key === topicKey);
@@ -28,34 +29,47 @@ export default function StudentDashboard() {
     // Clamp to max questions for this topic
     numValue = Math.min(numValue, max);
 
-    // Ensure correct + wrong doesn't exceed maxQuestions
-    const other = field === 'correct' ? 'wrong' : 'correct';
-    const otherValue = results[topicKey][other];
-    if (numValue + otherValue > max) {
-      numValue = max - otherValue;
-    }
+    setResults((prev) => {
+      const currentTopic = prev[topicKey] || { correct: 0, wrong: 0 };
+      const other = field === 'correct' ? 'wrong' : 'correct';
+      const otherValue = currentTopic[other];
+      
+      let finalNum = numValue;
+      if (finalNum + otherValue > max) {
+        finalNum = max - otherValue;
+      }
 
-    setResults((prev) => ({
-      ...prev,
-      [topicKey]: { ...prev[topicKey], [field]: numValue },
-    }));
+      return {
+        ...prev,
+        [topicKey]: { ...currentTopic, [field]: finalNum },
+      };
+    });
     setErrors((prev) => ({ ...prev, [topicKey]: undefined }));
   };
 
   const getTotalNet = () =>
-    TOPICS.reduce((sum, t) => sum + calculateNet(results[t.key].correct, results[t.key].wrong), 0);
+    TOPICS.reduce((sum, t) => {
+      const r = results[t.key] || { correct: 0, wrong: 0 };
+      return sum + calculateNet(r.correct, r.wrong);
+    }, 0);
 
   const getTotalCorrect = () =>
-    TOPICS.reduce((sum, t) => sum + results[t.key].correct, 0);
+    TOPICS.reduce((sum, t) => {
+      const r = results[t.key] || { correct: 0, wrong: 0 };
+      return sum + r.correct;
+    }, 0);
 
   const getTotalWrong = () =>
-    TOPICS.reduce((sum, t) => sum + results[t.key].wrong, 0);
+    TOPICS.reduce((sum, t) => {
+      const r = results[t.key] || { correct: 0, wrong: 0 };
+      return sum + r.wrong;
+    }, 0);
 
   const validate = () => {
     const newErrors = {};
     let valid = true;
     TOPICS.forEach((topic) => {
-      const r = results[topic.key];
+      const r = results[topic.key] || { correct: 0, wrong: 0 };
       if (r.correct + r.wrong > topic.maxQuestions) {
         newErrors[topic.key] = `Doğru + Yanlış toplamı ${topic.maxQuestions} soruyu geçemez.`;
         valid = false;
@@ -77,16 +91,32 @@ export default function StudentDashboard() {
     setErrors({});
     setSubmitted(false);
     setCopied(false);
+    setCurrentStep(0);
+  };
+
+  const handleNext = () => {
+    setCurrentStep((prev) => Math.min(prev + 1, TOPICS.length - 1));
+  };
+
+  const handlePrev = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 0));
   };
 
   const totalNet = getTotalNet();
   const totalCorrect = getTotalCorrect();
   const totalWrong = getTotalWrong();
 
+  const activeTopic = TOPICS[currentStep];
+  const activeResults = results[activeTopic?.key] || { correct: 0, wrong: 0 };
+  const activeNet = calculateNet(activeResults.correct, activeResults.wrong);
+  const hasError = !!errors[activeTopic?.key];
+  const isLastStep = currentStep === TOPICS.length - 1;
+  const progressPercent = ((currentStep + 1) / TOPICS.length) * 100;
+
   // Build JSON output
   const jsonOutput = JSON.stringify({
     date: examDate,
-    student: 'Zeynep',
+    student: 'Öğrenci',
     results,
     totalNet: parseFloat(totalNet.toFixed(2)),
   }, null, 2);
@@ -130,7 +160,7 @@ export default function StudentDashboard() {
           <div className="result-card-header">
             <div>
               <div className="result-card-title">YDT Sınav Sonucu</div>
-              <div className="result-card-student">Zeynep — {new Date(examDate + 'T00:00:00').toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+              <div className="result-card-student">Öğrenci — {new Date(examDate + 'T00:00:00').toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
             </div>
             <div className={`result-card-total ${totalNet >= 0 ? 'positive' : 'negative'}`}>
               {totalNet.toFixed(2)}
@@ -164,7 +194,7 @@ export default function StudentDashboard() {
             </thead>
             <tbody>
               {TOPICS.map((topic) => {
-                const r = results[topic.key];
+                const r = results[topic.key] || { correct: 0, wrong: 0 };
                 const net = calculateNet(r.correct, r.wrong);
                 return (
                   <tr key={topic.key}>
@@ -228,122 +258,100 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* Desktop Table */}
-        <div className="topics-table-wrapper">
-          <table className="topics-table">
-            <thead>
-              <tr>
-                <th>Konu</th>
-                <th>Max</th>
-                <th>Doğru</th>
-                <th>Yanlış</th>
-                <th>Net</th>
-              </tr>
-            </thead>
-            <tbody>
-              {TOPICS.map((topic) => {
-                const r = results[topic.key];
-                const net = calculateNet(r.correct, r.wrong);
-                const hasError = !!errors[topic.key];
-                return (
-                  <tr key={topic.key} className={hasError ? 'row-error' : ''}>
-                    <td className="topic-label">{topic.label}</td>
-                    <td className="topic-max">{topic.maxQuestions}</td>
-                    <td>
-                      <input type="number" min="0" max={topic.maxQuestions}
-                        value={r.correct || ''} onChange={(e) => handleChange(topic.key, 'correct', e.target.value)}
-                        placeholder="0" className="number-input" />
-                    </td>
-                    <td>
-                      <input type="number" min="0" max={topic.maxQuestions}
-                        value={r.wrong || ''} onChange={(e) => handleChange(topic.key, 'wrong', e.target.value)}
-                        placeholder="0" className="number-input" />
-                    </td>
-                    <td className={`net-value ${net > 0 ? 'positive' : net < 0 ? 'negative' : ''}`}>
-                      {net.toFixed(2)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="total-row">
-                <td><strong>TOPLAM</strong></td>
-                <td><strong>80</strong></td>
-                <td><strong>{totalCorrect}</strong></td>
-                <td><strong>{totalWrong}</strong></td>
-                <td className={`net-value total-net ${totalNet > 0 ? 'positive' : totalNet < 0 ? 'negative' : ''}`}>
-                  <strong>{totalNet.toFixed(2)}</strong>
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+        {/* Progress Bar */}
+        <div className="wizard-progress">
+          <div className="wizard-progress-bar" style={{ width: `${progressPercent}%` }}></div>
+        </div>
+        <div className="wizard-step-info">
+          Adım {currentStep + 1} / {TOPICS.length}
         </div>
 
-        {/* Mobile Cards */}
-        <div className="topics-mobile">
-          {TOPICS.map((topic) => {
-            const r = results[topic.key];
-            const net = calculateNet(r.correct, r.wrong);
-            const hasError = !!errors[topic.key];
-            return (
-              <div key={topic.key} className={`topic-card ${hasError ? 'row-error' : ''}`}>
-                <div className="topic-card-header">
-                  <span className="topic-name">{topic.label}</span>
-                  <span className="topic-info">{topic.maxQuestions} soru</span>
+        {/* Wizard Card */}
+        <div className="wizard-card-wrapper">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTopic?.key}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className={`wizard-card ${hasError ? 'row-error' : ''}`}
+            >
+              <div className="wizard-card-header">
+                <h3>{activeTopic?.label}</h3>
+                <span className="topic-max-badge">{activeTopic?.maxQuestions} Soru</span>
+              </div>
+              
+              <div className="wizard-inputs">
+                <div className="wizard-field">
+                  <label>Doğru</label>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    max={activeTopic?.maxQuestions}
+                    value={activeResults.correct !== 0 ? activeResults.correct : ''} 
+                    onChange={(e) => handleChange(activeTopic.key, 'correct', e.target.value)}
+                    placeholder="0" 
+                    className="number-input large" 
+                  />
                 </div>
-                <div className="topic-card-inputs">
-                  <div className="field">
-                    <label>Doğru</label>
-                    <input type="number" min="0" max={topic.maxQuestions}
-                      value={r.correct || ''} onChange={(e) => handleChange(topic.key, 'correct', e.target.value)}
-                      placeholder="0" className="number-input" />
-                  </div>
-                  <div className="field">
-                    <label>Yanlış</label>
-                    <input type="number" min="0" max={topic.maxQuestions}
-                      value={r.wrong || ''} onChange={(e) => handleChange(topic.key, 'wrong', e.target.value)}
-                      placeholder="0" className="number-input" />
-                  </div>
-                  <div className="topic-card-net">
-                    <span className="net-label">Net</span>
-                    <div className={`net-val ${net > 0 ? 'positive' : net < 0 ? 'negative' : ''}`}>
-                      {net.toFixed(1)}
-                    </div>
+                <div className="wizard-field">
+                  <label>Yanlış</label>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    max={activeTopic?.maxQuestions}
+                    value={activeResults.wrong !== 0 ? activeResults.wrong : ''} 
+                    onChange={(e) => handleChange(activeTopic.key, 'wrong', e.target.value)}
+                    placeholder="0" 
+                    className="number-input large" 
+                  />
+                </div>
+                <div className="wizard-net">
+                  <span className="net-label">Net</span>
+                  <div className={`net-val ${activeNet > 0 ? 'positive' : activeNet < 0 ? 'negative' : ''}`}>
+                    {activeNet.toFixed(2)}
                   </div>
                 </div>
               </div>
-            );
-          })}
-          <div className="mobile-total">
-            <div className="mobile-total-label">Toplam Net</div>
-            <div className={`mobile-total-net ${totalNet > 0 ? 'positive' : totalNet < 0 ? 'negative' : ''}`}>
-              {totalNet.toFixed(2)}
-            </div>
-            <div className="mobile-total-row">
-              <span className="mobile-total-item">Doğru: <strong>{totalCorrect}</strong></span>
-              <span className="mobile-total-item">Yanlış: <strong>{totalWrong}</strong></span>
-            </div>
-          </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
 
-        {Object.keys(errors).length > 0 && (
-          <div className="form-errors">
-            {Object.entries(errors).map(([key, msg]) => {
-              const topic = TOPICS.find((t) => t.key === key);
-              return (
-                <div key={key} className="error-item">
-                  <strong>{topic?.label}:</strong> {msg}
-                </div>
-              );
-            })}
-          </div>
-        )}
+        {/* Quick Total Display */}
+        <div className="wizard-quick-total">
+          <span>{totalCorrect} D, {totalWrong} Y, {80 - totalCorrect - totalWrong} B</span>
+          <br/>
+          <span>Toplam Net: <strong className={totalNet > 0 ? 'positive' : totalNet < 0 ? 'negative' : ''}>{totalNet.toFixed(2)}</strong></span>
+          <span className="text-muted"> / 80 Soru</span>
+        </div>
 
-        <div className="form-actions">
-          <button type="submit" className="btn-primary full-width">
-            <ClipboardList size={16} /> Sonucu Göster
+ 
+
+        {/* Navigation Actions */}
+        <div className="wizard-actions">
+          <button 
+            type="button" 
+            className="btn-secondary" 
+            onClick={handlePrev} 
+            disabled={currentStep === 0}
+          >
+            <ChevronLeft size={16} /> Geri
           </button>
+          
+          {!isLastStep ? (
+            <button 
+              type="button" 
+              className="btn-primary" 
+              onClick={handleNext}
+            >
+              İleri <ChevronRight size={16} />
+            </button>
+          ) : (
+            <button type="submit" className="btn-primary">
+              <ClipboardList size={16} /> Sonucu Göster
+            </button>
+          )}
         </div>
       </form>
     </div>

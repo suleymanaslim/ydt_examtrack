@@ -56,7 +56,7 @@ export default function App() {
             </button>
             <button className="role-select-btn teacher" onClick={() => setView('teacher-auth')}>
               <User size={24} />
-              <span className="role-select-name">Süleyman</span>
+              <span className="role-select-name">Öğretmen</span>
               <span className="role-select-desc">Öğretmen — Sonuçları Takip Et</span>
             </button>
           </div>
@@ -78,7 +78,7 @@ export default function App() {
           <div className="login-header">
             <div className="login-icon"><Lock size={28} /></div>
             <h1>Öğretmen Girişi</h1>
-            <p className="login-subtitle">Süleyman — Şifrenizi girin</p>
+            <p className="login-subtitle">Öğretmen — Şifrenizi girin</p>
           </div>
 
           <form onSubmit={handleTeacherLogin}>
@@ -163,12 +163,20 @@ export default function App() {
         <div className="header-left">
           <span className="app-logo"><FileText size={22} /></span>
           <h1>YDT Takip</h1>
-          <div className="header-user-info">
-            <span className="user-icon"><User size={14} /></span>
-            Süleyman (Öğretmen)
+          <div className="desktop-nav">
+            <button className={`desktop-nav-btn ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>
+              <Home size={16} /> Sınavlar
+            </button>
+            <button className={`desktop-nav-btn ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
+              <TrendingUp size={16} /> Gelişim
+            </button>
           </div>
         </div>
         <div className="header-actions">
+          <div className="header-user-info">
+            <span className="user-icon"><User size={14} /></span>
+            Öğretmen
+          </div>
           <button className="btn-icon danger" onClick={handleBack} title="Çıkış">
             <LogOut size={18} />
           </button>
